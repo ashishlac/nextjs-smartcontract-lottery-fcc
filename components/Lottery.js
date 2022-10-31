@@ -6,16 +6,23 @@ import { useNotification } from "web3uikit";
 
 export default function Lottery() {
     const { chainId: chainIdHex, isWeb3Enabled, isLoading, isFetching } = useMoralis();
-    const chainId = parseInt(chainIdHex);
-    console.log("chainId", chainId);
+    let chainId = parseInt(chainIdHex);
     const dispatch = useNotification();
 
     const raffleAddress = chainId in contractAddress ? contractAddress[chainId][0] : null;
+    console.log("raffleAddress0", raffleAddress);
 
     const [entranceFee, setEntranceFee] = useState("0");
     const [numOfPlayers, setNumOfPlayers] = useState("0");
     const [recentWinner, setRecentWinner] = useState("0");
+    const [raffleStatus, setRaffleStatus] = useState("0");
 
+    const { runContractFunction: getRaffleState } = useWeb3Contract({
+        abi: abi,
+        contractAddress: raffleAddress,
+        functionName: "getRaffleState",
+        params: {},
+    });
 
     const { runContractFunction: enterRaffle } = useWeb3Contract({
         abi: abi,
@@ -25,7 +32,14 @@ export default function Lottery() {
         msgValue: entranceFee,
     });
 
-    console.log("raffleAddress", raffleAddress);
+    console.log(abi)
+    console.log(raffleAddress)
+    const { runContractFunction: getNumberOfPlayers } = useWeb3Contract({
+        abi: abi,
+        contractAddress: raffleAddress,
+        functionName: "getNumberOfPlayers",
+        params: {},
+    });
 
     const { runContractFunction: getEntranceFee } = useWeb3Contract({
         abi: abi,
@@ -33,44 +47,30 @@ export default function Lottery() {
         functionName: "getEntranceFee",
         params: {},
     });
-    const { runContractFunction: getNumOfPlayers } = useWeb3Contract({
-        abi: abi,
-        contractAddress: raffleAddress,
-        functionName: "getNumOfPlayers",
-        params: {},
-    });
-
     const { runContractFunction: getRecentWinner } = useWeb3Contract({
         abi: abi,
         contractAddress: raffleAddress,
         functionName: "getRecentWinner",
         params: {},
     });
-    const { runContractFunction: getRaffleState } = useWeb3Contract({
-        abi: abi,
-        contractAddress: raffleAddress,
-        functionName: "getRaffleState",
-        params: {},
-    });
+
 
     async function updateUI() {
         if (isWeb3Enabled) {
             const entranceFeeFromCall = (await getEntranceFee()).toString();
-            const numOfPlayersFromCall = (await getNumOfPlayers()).toString();
-            const recentWinnerFromCall = await getRecentWinner();
             setEntranceFee(entranceFeeFromCall);
-            setNumOfPlayers(numOfPlayersFromCall);
+            const numOfPlayersFromCall = await getNumberOfPlayers();
+            const numOfPlayers = numOfPlayersFromCall ? numOfPlayersFromCall.toString() : "0";
+            setNumOfPlayers(numOfPlayers);
+            const recentWinnerFromCall = (await getRecentWinner()).toString();
             setRecentWinner(recentWinnerFromCall);
-            console.log("Entrancefee", entranceFee);
-            console.log("numOfPlayers", numOfPlayers);
-            console.log("recentWinner", recentWinner);
         }
     }
 
     useEffect(() => {
-
         updateUI();
     }, [isWeb3Enabled]);
+
     const handleSuccess = async function (tx) {
         await tx.wait(1);
         handleNotification(tx);
@@ -108,5 +108,20 @@ export default function Lottery() {
                         <div>No Raffle addreess detected</div>
                     )
             }
+
+            <br />
+
+            <button onClick={async function () {
+                await getRaffleState({
+                    onSuccess: function (data) { alert("@#"); setRaffleStatus(data.toString()) },
+                    onError: (error) => console.log(error),
+
+                })
+            }}>
+                Raffle State </button>
+            <br />
+            Raffle status : {raffleStatus}
+
+
         </div>);
 };
